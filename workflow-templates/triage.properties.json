@@ -1,0 +1,6 @@
+{
+  "name": "Ranvier issue triage",
+  "description": "Labels, routes and checks for duplicates on new issues with Claude Haiku, using the shared ranvier-org workflow.",
+  "iconName": "octicon issue-opened",
+  "categories": ["Automation"]
+}

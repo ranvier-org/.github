@@ -1,0 +1,61 @@
+# Reusable issue triage for ranvier-org repositories.
+# Each repository calls this from its own .github/workflows/triage.yml (see workflow-templates/triage.yml).
+# One Claude Haiku call per issue, billed to the Console org that owns ANTHROPIC_API_KEY.
+name: Triage issue
+
+on:
+  workflow_call:
+    inputs:
+      issue-number:
+        type: number
+        required: true
+      model:
+        type: string
+        default: claude-haiku-5-5
+      dry-run:
+        description: Decide and write the job summary, but change nothing on the issue.
+        type: boolean
+        default: false
+      force:
+        description: Triage again even if the issue already has the triaged label.
+        type: boolean
+        default: false
+      scripts-ref:
+        description: Ref of ranvier-org/.github to load the triage script from.
+        type: string
+        default: main
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
+
+permissions: {}
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    concurrency:
+      group: triage-${{ github.repository }}-${{ inputs.issue-number }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: ranvier-org/.github
+          ref: ${{ inputs.scripts-ref }}
+          path: .triage
+          sparse-checkout: scripts/triage
+          persist-credentials: false
+
+      - uses: actions/github-script@v9
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ISSUE_NUMBER: ${{ inputs.issue-number }}
+          TRIAGE_MODEL: ${{ inputs.model }}
+          DRY_RUN: ${{ inputs.dry-run }}
+          FORCE: ${{ inputs.force }}
+        with:
+          script: |
+            const { triage } = require(`${process.env.GITHUB_WORKSPACE}/.triage/scripts/triage/triage.cjs`);
+            await triage({ github, context, core });
